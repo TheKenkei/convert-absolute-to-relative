@@ -64,9 +64,36 @@ async function processHtmlFile(filePath, baseHref) {
     }
   });
 
+  // Обработка содержимого JavaScript в HTML-файлах
+  const scriptsInHtml = document.querySelectorAll("script");
+  scriptsInHtml.forEach((script) => {
+    if (script.textContent) {
+      const updatedContent = script.textContent.replace(
+        /e\.Z=\{src:"\/_next\//g,
+        `e.Z={src:"${baseHref}_next/`
+      );
+      if (updatedContent !== script.textContent) {
+        updated = true;
+        script.textContent = updatedContent;
+      }
+    }
+  });
+
   if (updated) {
     const newContent = dom.serialize();
     await fs.writeFile(filePath, newContent, "utf-8");
+    console.log(`Updated file: ${filePath}`);
+  }
+}
+
+async function processJsFile(filePath, baseHref) {
+  let content = await fs.readFile(filePath, "utf-8");
+  const pattern = /e\.Z=\{src:"\/_next\//g;
+  const replacement = `e.Z={src:"${baseHref}_next/`;
+
+  if (pattern.test(content)) {
+    content = content.replace(pattern, replacement);
+    await fs.writeFile(filePath, content, "utf-8");
     console.log(`Updated file: ${filePath}`);
   }
 }
@@ -81,6 +108,8 @@ async function processDirectory(directory, baseHref) {
       await processDirectory(fullPath, baseHref);
     } else if (item.isFile() && fullPath.endsWith(".html")) {
       await processHtmlFile(fullPath, baseHref);
+    } else if (item.isFile() && fullPath.endsWith(".js")) {
+      await processJsFile(fullPath, baseHref);
     }
   }
 }
